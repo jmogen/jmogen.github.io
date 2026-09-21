@@ -37,6 +37,10 @@
             description: 'Built an EKF from scratch in Python to track a vehicle\'s 2D pose (x, y, heading) using noisy odometry and LIDAR range/bearing measurements to known landmarks. Implemented the full prediction-correction loop by hand, including Jacobians, Kalman gain, and covariance propagation, and watched the estimated trajectory converge onto ground truth once the math clicked into place. Basically taught me why every self-driving car and drone runs some flavor of this filter under the hood.',
             github: 'https://github.com/jmogen/extended_kalman_filter',
         },
+        'Pihole on Raspberry Pi': {
+            name: 'Pihole on Raspberry Pi (Network Ad-Blocking)',
+            description: 'Set up a Raspberry Pi as a network-wide ad-blocker using Pihole, which runs a DNS sinkhole to block ads and trackers for every device on the local network. Configured the Pi to run headless, with SSH access and a static IP, and set up the router to use it as the primary DNS server. It\'s a fun little project that makes browsing the web noticeably cleaner and faster (although it doesn\'t block all YouTube ads).',
+        },
         'Single-Stage Object Detector': {
             name: 'Single-Stage Object Detector (YOLO)',
             description: 'Built a YOLO-style single-stage object detector in PyTorch on top of a MobileNetV2 backbone, implementing anchor generation, IoU matching, proposal decoding, and a full multi-part loss (confidence, bounding box regression, classification) from scratch. Trained and evaluated it on PASCAL VOC 2007 using mean Average Precision, and even hand-rolled non-max suppression just to see how it stacks up against torchvision\'s optimized version. It\'s a scaled-down version of the real thing, but it\'s the same core recipe every modern real-time detector still builds on.',
