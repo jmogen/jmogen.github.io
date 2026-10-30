@@ -13,6 +13,10 @@
 <body>
     <div class="terminal-container">
         <div id="terminal"></div>
+        <div id="easy-bar">
+            <div id="easy-actions"></div>
+            <button id="easy-toggle" type="button"></button>
+        </div>
     </div>
     <script>
     const PROJECTS = {
@@ -1143,7 +1147,7 @@
             });
         }
 
-        term.write("\r\nIf you have never used a terminal before and don't want to learn, just type \"about\" and hit enter.\r\n\r\nIf you want to learn, you can type \"help\" and hit enter or try this: https://ubuntu.com/tutorials/command-line-for-beginners#1-overview\r\n\r\n");
+        term.write("\r\nIf you have never used a terminal before and don't want to learn, just type \"about\" and hit enter, or click \"Easy mode\" at the bottom of the screen.\r\n\r\nIf you want to learn, you can type \"help\" and hit enter or try this: https://ubuntu.com/tutorials/command-line-for-beginners#1-overview\r\n\r\n");
 
         const coloredPrompt = colorText(currentPrompt, promptColor);
         term.write(coloredPrompt);
@@ -1344,6 +1348,7 @@
         term.write('\x1b7'); // save cursor position — this is the fixed anchor for the whole game
         term.write('\x1b[?25l'); // hide the native blinking cursor
         msRedraw();
+        renderEasyPanel();
     }
 
     function exitMinesweeper(printMessage) {
@@ -1357,6 +1362,7 @@
         }
         term.write('\r\n');
         term.write(colorText(getPromptRaw(), promptColor));
+        renderEasyPanel();
     }
 
     function handleMinesweeperInput(e) {
@@ -1426,23 +1432,13 @@
     let outputHistory = [];
 
     term.onData(e => {
+        if (isAutoTyping) return; // ignore keystrokes while easy mode is typing a command
         if (terminalState.inGame) {
             handleMinesweeperInput(e);
             return;
         }
         if (e === '\r') {
-            if (command.trim()) {
-                commandHistory.push(command.trim());
-                historyIndex = commandHistory.length;
-            }
-            term.write('\r\n');
-            if (command.trim()) {
-                outputHistory.push({ type: 'prompt', prompt: currentPrompt, command: command });
-                handleCommand(command.trim());
-            } else {
-                term.write(currentPrompt);
-            }
-            command = '';
+            submitCommand();
         } else if (e === '\u007F') {
             if (command.length > 0) {
                 term.write('\b \b');
@@ -1485,6 +1481,135 @@
         term.write(newCommand);
         command = newCommand;
     }
+
+    function submitCommand() {
+        if (command.trim()) {
+            commandHistory.push(command.trim());
+            historyIndex = commandHistory.length;
+        }
+        term.write('\r\n');
+        if (command.trim()) {
+            outputHistory.push({ type: 'prompt', prompt: currentPrompt, command: command });
+            handleCommand(command.trim());
+        } else {
+            term.write(currentPrompt);
+        }
+        command = '';
+        renderEasyPanel();
+    }
+
+    // ---------- Easy mode: clickable buttons that type commands for you ----------
+
+    let isAutoTyping = false;
+    const easyBar = document.getElementById('easy-bar');
+    const easyActions = document.getElementById('easy-actions');
+    const easyToggle = document.getElementById('easy-toggle');
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
+    function getInitialEasyMode() {
+        const mode = new URLSearchParams(window.location.search).get('mode');
+        if (mode === 'easy') return true;
+        if (mode === 'terminal') return false;
+        return localStorage.getItem('easyMode') === 'on';
+    }
+
+    let easyMode = getInitialEasyMode();
+
+    // Types the command into the prompt one character at a time, then presses enter,
+    // so visitors can see the real command behind each button.
+    function runCommand(cmd) {
+        if (isAutoTyping || terminalState.inGame) return;
+        isAutoTyping = true;
+        replaceCommandLine('');
+        let i = 0;
+        const typeNext = () => {
+            if (i < cmd.length) {
+                term.write(cmd[i]);
+                command += cmd[i];
+                i++;
+                setTimeout(typeNext, 30);
+            } else {
+                setTimeout(() => {
+                    isAutoTyping = false;
+                    submitCommand();
+                    if (!isTouchDevice) term.focus();
+                }, 150);
+            }
+        };
+        typeNext();
+    }
+
+    function getEasyActions() {
+        if (terminalState.inGame) {
+            return [
+                { label: '←', key: '\x1b[D' },
+                { label: '↑', key: '\x1b[A' },
+                { label: '↓', key: '\x1b[B' },
+                { label: '→', key: '\x1b[C' },
+                { label: 'Reveal', key: ' ' },
+                { label: 'Flag', key: 'f' },
+                { label: 'Quit game', key: 'q' },
+            ];
+        }
+
+        const dir = terminalState.currentDir;
+        const actions = [];
+
+        if (dir === '/home/user/projects') {
+            for (const name of Object.keys(PROJECTS)) {
+                actions.push({ label: name, cmd: `cat ${slugify(name)}.txt` });
+            }
+            actions.push({ label: '← Back', cmd: 'cd ..' });
+        } else if (dir === '/home/user') {
+            actions.push({ label: 'About me', cmd: 'about' });
+            actions.push({ label: 'Projects', cmd: 'cd projects' });
+            actions.push({ label: 'Read README', cmd: 'cat README.md' });
+            actions.push({ label: 'Play Minesweeper', cmd: './minesweeper' });
+        } else {
+            actions.push({ label: 'Go home', cmd: 'cd' });
+        }
+
+        actions.push({ label: 'Show files here', cmd: 'ls' });
+        actions.push({ label: 'Clear screen', cmd: 'clear' });
+        return actions;
+    }
+
+    function renderEasyPanel() {
+        easyBar.classList.toggle('easy-on', easyMode);
+        easyToggle.textContent = easyMode ? 'Back to terminal mode' : 'Never used a terminal? Try easy mode';
+        easyActions.replaceChildren();
+        if (!easyMode) return;
+
+        for (const action of getEasyActions()) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'easy-btn';
+            btn.textContent = action.label;
+            if (action.cmd) {
+                btn.title = `Runs: ${action.cmd}`;
+                btn.addEventListener('click', () => runCommand(action.cmd));
+            } else {
+                btn.addEventListener('click', () => handleMinesweeperInput(action.key));
+            }
+            easyActions.appendChild(btn);
+        }
+    }
+
+    easyToggle.addEventListener('click', () => {
+        easyMode = !easyMode;
+        localStorage.setItem('easyMode', easyMode ? 'on' : 'off');
+        renderEasyPanel();
+        if (!isTouchDevice) term.focus();
+    });
+
+    // The easy mode bar changes height as its buttons change, so keep the terminal
+    // sized to whatever space is left and the newest output in view.
+    new ResizeObserver(() => {
+        fitAddon.fit();
+        term.scrollToBottom();
+    }).observe(terminalContainer);
+
+    renderEasyPanel();
 
     
     function handleCommand(input) {
