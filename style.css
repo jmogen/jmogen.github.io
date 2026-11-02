@@ -56,9 +56,60 @@ body {
     width: 100%;
     height: 100%;
     flex: 1;
+    min-height: 0;      /* let the easy mode bar take its share of the height */
     overflow: hidden;   /* let xterm's internal viewport handle all scrolling */
-    padding: 10px 0 10px 0;
     background: transparent;
+}
+
+
+/* Easy mode bar: always visible along the bottom of the terminal */
+#easy-bar {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 8px 0 0 0;
+    border-top: 1px solid var(--theme-header-accent);
+}
+
+#easy-bar.easy-on {
+    justify-content: space-between;
+}
+
+#easy-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 25vh;   /* long project lists scroll instead of covering the terminal */
+    overflow-y: auto;
+}
+
+#easy-actions:empty {
+    display: none;
+}
+
+#easy-bar button {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--theme-fg);
+    background: var(--theme-bg-dark);
+    border: 1px solid var(--theme-fg);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+#easy-bar button:hover,
+#easy-bar button:focus-visible {
+    color: var(--theme-bg);
+    background: var(--theme-fg);
+    outline: none;
+}
+
+#easy-toggle {
+    opacity: 0.8;
 }
 
 
@@ -66,6 +117,8 @@ body {
 .xterm {
     color: var(--theme-fg);
     background-color: transparent;
+    height: 100%;
+    padding: 10px 0;    /* padding lives here (not on #terminal) so the fit addon subtracts it when sizing rows */
 }
 
 
@@ -122,6 +175,11 @@ body {
 
     .xterm {
         font-size: 12px !important;
+    }
+
+    #easy-bar button {
+        font-size: 13px;
+        padding: 8px 10px;
     }
 }
 @media (max-width: 480px) {
